@@ -249,10 +249,7 @@ export const getBotCredentials = createServerFn({ method: "GET" }).handler(async
   } catch (e) {
     console.error("bot_stats unavailable:", (e as Error).message);
   }
-  let origin = req ? siteOrigin(req) : "";
-  // The editor preview address is private: the bot gets a login page there and never connects.
-  const pv = origin.match(/^https?:\/\/id-preview--([0-9a-f-]+)\.lovable\.app$/i);
-  if (pv) origin = `https://project--${pv[1]}.lovable.app`;
+  const origin = req ? siteOrigin(req) : "";
   return {
     clientId: cfg.client_id ?? "",
     clientSecret: cfg.client_secret ?? "",

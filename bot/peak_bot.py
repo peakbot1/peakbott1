@@ -979,8 +979,10 @@ async def wait_for_new_token(old: str | None) -> str:
     while True:
         await report("bad_token" if old else "no_token")
         await asyncio.sleep(300)
-        data = await fetch_site_config()
-        token = os.environ.get("BOT_TOKEN") or data.get("token")
+        token = os.environ.get("BOT_TOKEN") or os.environ.get("DISCORD_BOT_TOKEN")
+        if not token or token == old:
+            data = await fetch_site_config()
+            token = data.get("token")
         if token and token != old:
             return token
         print("Still waiting for a new bot token in the admin panel (checking every 5 minutes).")
@@ -990,11 +992,15 @@ async def main():
     global http
     http = aiohttp.ClientSession()
     await health_server()
-    data = await fetch_site_config()
-    await report("starting")
-    for row in data["guilds"]:
-        SETTINGS[row["guild_id"]] = row["settings"]
-    token = os.environ.get("BOT_TOKEN") or data.get("token")
+    # A token configured on the host must not depend on the website being reachable.
+    # sync_loop still loads all guild settings as soon as the website responds.
+    token = os.environ.get("BOT_TOKEN") or os.environ.get("DISCORD_BOT_TOKEN")
+    if not token:
+        data = await fetch_site_config()
+        for row in data["guilds"]:
+            SETTINGS[row["guild_id"]] = row["settings"]
+        token = data.get("token")
+    asyncio.create_task(report("starting"))
     asyncio.create_task(sync_loop())
     # stats_loop / voice_loop start from on_ready: waiting for "ready" before login crashes them.
     if not token:
